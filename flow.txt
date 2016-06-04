@@ -1,0 +1,13 @@
+1. read the input. for each line, eliminate patterns. then, reduce the text field to contain text only.
+output: <year, <text, multiplier> >, eliminate lines that are from irrelevant years
+
+2. read the input. for each line, breakdown into pairs. each pair that contains a stop-word will be eliminated, and those
+that don't will be written to context: <year, < <w1, w2>, #appearences> >
+
+3. count the pairs and single words
+
+4. calculate PMI for each pair
+
+5. find the best K PMIs
+
+6. calculate the F-Measure for those K pairs, per decade
