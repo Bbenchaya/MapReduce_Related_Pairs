@@ -4,6 +4,24 @@ For further information, please consult the [assignment description](https://www
 
 Using Hadoop 2.7.2 and Java 1.8, on OS X 10.10 Yosemite.
 
+## Setup
+Required definitions in `~/.bash_profile`:
+
+    export JAVA_HOME=$(/usr/libexec/java_home)
+    export HADOOP_HOME=/Users/asafchelouche/programming/hadoop-2.7.2
+    export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+    export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+    export HADOOP_OPTS=-Djava.library.path=$HADOOP_HOME/lib/native
+    export PATH=$JAVA_HOME/bin:$PATH
+    export PATH=$HADOOP_HOME/bin:$PATH
+    export HADOOP_CLASSPATH=${JAVA_HOME}/lib/tools.jar
+    export HADOOP_USERNAME=<your username>
+
+## Running this
+`cd` into `<project directory>/src` and then run:
+
+`$ ./run.sh`
+
 # License
 
 The MIT License (MIT)
