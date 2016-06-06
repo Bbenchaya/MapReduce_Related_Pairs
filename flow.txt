@@ -11,3 +11,20 @@ that don't will be written to context: <year, < <w1, w2>, #appearences> >
 5. find the best K PMIs
 
 6. calculate the F-Measure for those K pairs, per decade
+
+
+***Types***
+1. <text, text>
+2. <long, long>
+3. <<text, text>, longwritable>
+4. <<text, text>, <longwritable, longwritable>>
+
+
+==========================================================
+               open questions for majeek
+==========================================================
+
+1. If a stop word is the middle word, are all generated pairs discarded?
+2. Do we need to take into account the number of instances of each nGram, or do we count it as one either way?
+3. In regards to counting occurrences of single words, do we count before we discard stop words or after?
+4.
