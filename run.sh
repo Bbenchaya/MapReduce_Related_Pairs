@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+cd src
 hadoop fs -rm -r /user/$HADOOP_USERNAME/output
 hadoop com.sun.tools.javac.Main WordCount.java
 jar cf wc.jar WordCount*.class
