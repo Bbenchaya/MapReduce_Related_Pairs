@@ -23,10 +23,10 @@ public class Manager {
             System.exit(2);
         }
         Job job = Job.getInstance(conf, "word count");
-        job.setJarByClass(WordCount.class);
-        job.setMapperClass(TokenizerMapper.class);
-        job.setCombinerClass(IntSumReducer.class);
-        job.setReducerClass(IntSumReducer.class);
+        job.setJarByClass(Phase1.class);
+        job.setMapperClass(Phase1.Mapper1.class);
+        job.setCombinerClass(Phase1.Reducer1.class);
+        job.setReducerClass(Phase1.Reducer1.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
         job.setInputFormatClass(SequenceFileInputFormat.class);
