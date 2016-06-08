@@ -103,7 +103,7 @@ public class Phase1 {
                 for (String component : components) { // emit pairs
                     if (middle != index && stopwords.get(component) == null) {
                         text.set(year + "$" + component + "$*");
-                        context.write(text, one); // write the second word only
+                        context.write(text, new LongWritable(Long.parseLong(occurrences))); // write the second word only
                         counter.increment(1);
                     }
                     index++;
@@ -126,6 +126,25 @@ public class Phase1 {
             context.write(text, one); // write the middle word
             counter.increment(1);
         }
+
+        @Override
+        public void cleanup(Context context) {
+            System.out.println("Num of pairs: " + counter.getValue());
+        }
+
+    }
+
+    public static class Combiner1 extends Reducer<Text, LongWritable, Text, LongWritable> {
+
+        @Override
+        public void reduce(Text key, Iterable<LongWritable> counts, Context context) throws IOException, InterruptedException {
+            long sum = 0l;
+            for (LongWritable count : counts)
+                sum += count.get();
+            String[] components = key.toString().split("[$]");
+            context.write(new Text(components[1] + "$" + components[2]), new LongWritable(sum));
+        }
+
     }
 
     public static class Partitioner1 extends Partitioner<Text, LongWritable> {
