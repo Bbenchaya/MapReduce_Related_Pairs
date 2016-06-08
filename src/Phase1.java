@@ -20,15 +20,14 @@ import java.util.Scanner;
 public class Phase1 {
 
     public static class Mapper1
-            extends Mapper<Object, Text, WritableComparablePair, LongWritable>{
+            extends Mapper<Object, Text, Text, LongWritable>{
 
         static enum CountersEnum {NUM_OF_WORDS_IN_CORPUS, NUM_OF_PAIRS_PHASE_ONE}
         private final static LongWritable one = new LongWritable(1);
-        private WritableComparablePair key = new Phase1Key();
-        private TextPair textPair = new TextPair();
+        private Text text;
         private boolean caseSensitive;
         private Configuration conf;
-        private Map<String, Boolean> stopwords = new HashMap<>();
+        private Map<String, Boolean> stopwords;
         private final String REGEX = "[^a-zA-Z ]+";
         private Counter counter;
 
@@ -36,12 +35,18 @@ public class Phase1 {
         public void setup(Context context) throws IOException,
                 InterruptedException {
 
+            text = new Text();
+            stopwords = new HashMap<>();
+
             // populate the stop-words hashmap
             File file = new File("stopwords.txt");
             FileReader fr = new FileReader(file);
             Scanner sc = new Scanner(fr);
-            while (sc.hasNextLine())
-                stopwords.put(sc.nextLine().replaceAll(REGEX, ""), true);
+            while (sc.hasNextLine()) {
+                String line = sc.nextLine();
+                line = line.replaceAll(REGEX, "");
+                stopwords.put(line, true);
+            }
             sc.close();
 
             // construct patterns hashset
@@ -67,13 +72,13 @@ public class Phase1 {
                 parts[0] = parts[0].substring(1);
 //            System.out.println("after:" + parts[0]);
             // context, text, year, no. of occurrences
-            writeToContext(context, parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
+            writeToContext(context, parts[0], parts[1], parts[2]);
 //            System.out.println("\n");
         }
 
-        private void writeToContext(Context context, String line, int year, int num) throws IOException, InterruptedException {
+        private void writeToContext(Context context, String line, String year, String occurrences) throws IOException, InterruptedException {
 //            System.out.println("length: " + line.split(" ").length);
-            if (year < 1900)
+            if (year.compareTo("1900") < 0)
                 return;
             String[] components = line.split(" ");
             if (components.length == 1)
@@ -81,17 +86,7 @@ public class Phase1 {
             int middle = 0;
             switch (components.length) {
                 case 2:
-                    key.setK1(new LongWritable(year - (year % 10)));
-                    textPair.setK1(components[0]);
-                    textPair.setK2(components[1]);
-                    key.setK2(textPair);
-                    context.write(key, one);
-                    textPair.setK2("*");
-                    context.write(key, one);
-                    counter.increment(1);
-                    textPair.setK1(components[1]);
-                    context.write(key, one);
-                    counter.increment(1);
+
                     return;
                 case 3:
                     middle = 1;
@@ -103,59 +98,64 @@ public class Phase1 {
                     middle = 2;
                     break;
             }
-            if (stopwords.get(components[middle]) != null) // middle word is a stopword
-                return;
             int index = 0;
-            key.setK1(new LongWritable(year - (year % 10)));
-            textPair.setK1(components[middle]);
+            if (stopwords.get(components[middle]) != null) { // middle word is a stopword
+                for (String component : components) { // emit pairs
+                    if (middle != index && stopwords.get(component) == null) {
+                        text.set(year + "$" + component + "$*");
+                        context.write(text, one); // write the second word only
+                        counter.increment(1);
+                    }
+                    index++;
+                }
+                return;
+            }
+            year = year.substring(0, 3) + "0"; // lower year's resolution to decade
+            String major = components[middle];
             for (String component : components) { // emit pairs
                 if (middle != index && stopwords.get(component) == null) {
-                    textPair.setK1(components[middle]);
-                    textPair.setK2(component);
-                    key.setK2(textPair);
-                    context.write(key, one);
+                    text.set(year + "$" + major + "$" + component);
+                    context.write(text, one); // write the pair of words
+                    text.set(year + "$" + component + "$*");
+                    context.write(text, one); // write the second word only
                     counter.increment(1);
-                    textPair.setK1(component);
-                    textPair.setK2("*");
-                    context.write(key, one);
                 }
                 index++;
             }
-            textPair.setK1(components[middle]);
-            textPair.setK2("*");
-            key.setK2(textPair);
-            context.write(key, one);
-
-//            System.out.println("Written entry: " + key.getK1() + " " + key.getK2().toString());
-
+            text.set(year + "$" + major + "$*");
+            context.write(text, one); // write the middle word
             counter.increment(1);
         }
     }
 
-    public static class Partitioner1 extends Partitioner<Phase1Key, LongWritable> {
+    public static class Partitioner1 extends Partitioner<Text, LongWritable> {
 
         @Override
-        public int getPartition(Phase1Key key, LongWritable value, int numOfPartitions) {
-            long decade = ((LongWritable) key.getK1()).get();
-            decade -= 1900;
-            return (int)(decade / 10l);
+        public int getPartition(Text text, LongWritable longWritable, int i) {
+            int year = Integer.parseInt(text.toString().split("[$]")[0]);
+            year -= 1900;
+            return year / 10; // 1900-1909 go to reducer 0, 1910-1919 go to reducer 1 and so on...
         }
     }
 
     public static class Reducer1
-            extends Reducer<Phase1Key, LongWritable, TextPair, LongWritable> {
+            extends Reducer<Text, LongWritable, Text, LongWritable> {
 
-        public void reduce(Phase1Key key, Iterable<LongWritable> counts,
+        public void reduce(Text key, Iterable<LongWritable> counts,
                            Context context
         ) throws IOException, InterruptedException {
 
-            TextPair textPair = key.getK2();
+            String[] components = key.toString().split("[$]");
             long sum = 0l;
 
             for (LongWritable count : counts)
                 sum += count.get();
-
-            context.write(textPair, new LongWritable(sum));
+            if (components.length == 2)
+                // If a combiner went into action, the year was removed from the key, so the split yielded a different
+                // String array.
+                context.write(new Text(components[0] + "$" + components[1]), new LongWritable(sum));
+            else
+                context.write(new Text(components[1] + "$" + components[2]), new LongWritable(sum));
         }
     }
 
