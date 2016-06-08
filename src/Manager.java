@@ -1,7 +1,6 @@
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
@@ -25,11 +24,15 @@ public class Manager {
         Job job = Job.getInstance(conf, "word count");
         job.setJarByClass(Phase1.class);
         job.setMapperClass(Phase1.Mapper1.class);
+        job.setMapOutputKeyClass(Phase1Key.class);
+        job.setMapOutputValueClass(LongWritable.class);
+        job.setPartitionerClass(Phase1.Partitioner1.class);
         job.setCombinerClass(Phase1.Reducer1.class);
         job.setReducerClass(Phase1.Reducer1.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(IntWritable.class);
+        job.setOutputKeyClass(TextPair.class);
+        job.setOutputValueClass(LongWritable.class);
         job.setInputFormatClass(SequenceFileInputFormat.class);
+        job.setNumReduceTasks(12);
 
         List<String> otherArgs = new ArrayList<String>();
         for (int i=0; i < remainingArgs.length; ++i) {
