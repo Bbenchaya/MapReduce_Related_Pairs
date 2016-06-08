@@ -7,7 +7,7 @@ import java.io.IOException;
 /**
  * Created by asafchelouche on 8/6/16.
  */
-public abstract class WritableComparablePair<K1, K2> implements WritableComparable<WritableComparablePair> {
+public abstract class WritableComparablePair<K1 extends WritableComparable, K2 extends WritableComparable> implements WritableComparable<WritableComparablePair> {
 
     K1 k1;
     K2 k2;

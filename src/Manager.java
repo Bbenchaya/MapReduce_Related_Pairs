@@ -27,7 +27,7 @@ public class Manager {
         job.setMapOutputKeyClass(Phase1Key.class);
         job.setMapOutputValueClass(LongWritable.class);
         job.setPartitionerClass(Phase1.Partitioner1.class);
-        job.setCombinerClass(Phase1.Reducer1.class);
+//        job.setCombinerClass(Phase1.Reducer1.class);
         job.setReducerClass(Phase1.Reducer1.class);
         job.setOutputKeyClass(TextPair.class);
         job.setOutputValueClass(LongWritable.class);
