@@ -5,10 +5,7 @@
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Counter;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Partitioner;
-import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.*;
 
 import java.io.File;
 import java.io.FileReader;
@@ -22,13 +19,13 @@ public class Phase1 {
     public static class Mapper1
             extends Mapper<Object, Text, Text, LongWritable>{
 
-        static enum CountersEnum {NUM_OF_WORDS_IN_CORPUS, NUM_OF_PAIRS_PHASE_ONE}
+        static enum CountersEnum {NUM_OF_WORDS_IN_CORPUS}
         private final static LongWritable one = new LongWritable(1);
         private Text text;
         private Configuration conf;
         private Map<String, Boolean> stopwords;
         private final String REGEX = "[^a-zA-Z ]+";
-        private Counter counter;
+        private Counter numOfWordsInCorpus;
 
         @Override
         public void setup(Context context) throws IOException,
@@ -50,7 +47,7 @@ public class Phase1 {
 
             // construct patterns hashset
             conf = context.getConfiguration();
-            counter = context.getCounter(CountersEnum.class.getName(), CountersEnum.NUM_OF_WORDS_IN_CORPUS.toString());
+            numOfWordsInCorpus = context.getCounter(CountersEnum.class.getName(), CountersEnum.NUM_OF_WORDS_IN_CORPUS.toString());
         }
 
         @Override
@@ -86,11 +83,11 @@ public class Phase1 {
                     if (stopwords.get(components[0]) == null) {
                         text.set(year + "$" + components[0] + "$*");
                         context.write(text, new LongWritable(numOfOccurences)); // write the second word only
-                        counter.increment(numOfOccurences);
+                        numOfWordsInCorpus.increment(numOfOccurences);
                         if (stopwords.get(components[1]) == null) {
                             text.set(year + "$" + components[1] + "$*");
                             context.write(text, new LongWritable(numOfOccurences)); // write the second word only
-                            counter.increment(numOfOccurences);
+                            numOfWordsInCorpus.increment(numOfOccurences);
                             text.set(year + "$" + components[0] + "$" + components[1]);
                             context.write(text, new LongWritable(numOfOccurences)); // write the second word only
                         }
@@ -112,7 +109,7 @@ public class Phase1 {
                     if (middle != index && stopwords.get(component) == null) {
                         text.set(year + "$" + component + "$*");
                         context.write(text, new LongWritable(numOfOccurences)); // write the second word only
-                        counter.increment(1);
+                        numOfWordsInCorpus.increment(1);
                     }
                     index++;
                 }
@@ -126,18 +123,18 @@ public class Phase1 {
                     context.write(text, one); // write the pair of words
                     text.set(year + "$" + component + "$*");
                     context.write(text, one); // write the second word only
-                    counter.increment(numOfOccurences);
+                    numOfWordsInCorpus.increment(numOfOccurences);
                 }
                 index++;
             }
             text.set(year + "$" + major + "$*");
             context.write(text, one); // write the middle word
-            counter.increment(numOfOccurences);
+            numOfWordsInCorpus.increment(numOfOccurences);
         }
 
         @Override
         public void cleanup(Context context) {
-            System.out.println("Num of pairs: " + counter.getValue());
+            System.out.println("Num of pairs: " + numOfWordsInCorpus.getValue());
         }
 
     }
@@ -167,6 +164,7 @@ public class Phase1 {
     public static class Reducer1
             extends Reducer<Text, LongWritable, Text, LongWritable> {
 
+        @Override
         public void reduce(Text key, Iterable<LongWritable> counts,
                            Context context
         ) throws IOException, InterruptedException {
@@ -174,14 +172,21 @@ public class Phase1 {
             String[] components = key.toString().split("[$]");
             long sum = 0l;
 
-            for (LongWritable count : counts)
+            for (LongWritable count : counts) {
                 sum += count.get();
+            }
 //            if (components.length == 2)
 //                // If a combiner went into action, the year was removed from the key, so the split yielded a different
 //                // String array.
 //                context.write(new Text(components[0] + "$" + components[1]), new LongWritable(sum));
 //            else
                 context.write(new Text(components[1] + "$" + components[2]), new LongWritable(sum));
+        }
+
+        @Override
+        public void cleanup(Context context) {
+            Counter c = context.getCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
+            System.out.println("Num of pairs for reducer 1: " + c.getValue());
         }
     }
 
