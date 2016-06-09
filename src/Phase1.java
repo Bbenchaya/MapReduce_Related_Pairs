@@ -25,7 +25,6 @@ public class Phase1 {
         static enum CountersEnum {NUM_OF_WORDS_IN_CORPUS, NUM_OF_PAIRS_PHASE_ONE}
         private final static LongWritable one = new LongWritable(1);
         private Text text;
-        private boolean caseSensitive;
         private Configuration conf;
         private Map<String, Boolean> stopwords;
         private final String REGEX = "[^a-zA-Z ]+";
@@ -51,16 +50,13 @@ public class Phase1 {
 
             // construct patterns hashset
             conf = context.getConfiguration();
-            caseSensitive = conf.getBoolean("phase1.case.sensitive", true);
             counter = context.getCounter(CountersEnum.class.getName(), CountersEnum.NUM_OF_WORDS_IN_CORPUS.toString());
         }
 
         @Override
         public void map(Object key, Text value, Context context
         ) throws IOException, InterruptedException {
-            String line = (caseSensitive) ?
-                    value.toString() : value.toString().toLowerCase();
-
+            String line = value.toString().toLowerCase();
             String[] parts = line.split("\t");
 //            for (String part : parts)
 //                System.out.println(part);
@@ -84,9 +80,21 @@ public class Phase1 {
             if (components.length == 1)
                 return;
             int middle = 0;
+            long numOfOccurences = Long.parseLong(occurrences);
             switch (components.length) {
                 case 2:
-
+                    if (stopwords.get(components[0]) == null) {
+                        text.set(year + "$" + components[0] + "$*");
+                        context.write(text, new LongWritable(numOfOccurences)); // write the second word only
+                        counter.increment(numOfOccurences);
+                        if (stopwords.get(components[1]) == null) {
+                            text.set(year + "$" + components[1] + "$*");
+                            context.write(text, new LongWritable(numOfOccurences)); // write the second word only
+                            counter.increment(numOfOccurences);
+                            text.set(year + "$" + components[0] + "$" + components[1]);
+                            context.write(text, new LongWritable(numOfOccurences)); // write the second word only
+                        }
+                    }
                     return;
                 case 3:
                     middle = 1;
@@ -103,7 +111,7 @@ public class Phase1 {
                 for (String component : components) { // emit pairs
                     if (middle != index && stopwords.get(component) == null) {
                         text.set(year + "$" + component + "$*");
-                        context.write(text, new LongWritable(Long.parseLong(occurrences))); // write the second word only
+                        context.write(text, new LongWritable(numOfOccurences)); // write the second word only
                         counter.increment(1);
                     }
                     index++;
@@ -118,13 +126,13 @@ public class Phase1 {
                     context.write(text, one); // write the pair of words
                     text.set(year + "$" + component + "$*");
                     context.write(text, one); // write the second word only
-                    counter.increment(1);
+                    counter.increment(numOfOccurences);
                 }
                 index++;
             }
             text.set(year + "$" + major + "$*");
             context.write(text, one); // write the middle word
-            counter.increment(1);
+            counter.increment(numOfOccurences);
         }
 
         @Override
@@ -141,8 +149,7 @@ public class Phase1 {
             long sum = 0l;
             for (LongWritable count : counts)
                 sum += count.get();
-            String[] components = key.toString().split("[$]");
-            context.write(new Text(components[1] + "$" + components[2]), new LongWritable(sum));
+            context.write(key, new LongWritable(sum));
         }
 
     }
@@ -169,11 +176,11 @@ public class Phase1 {
 
             for (LongWritable count : counts)
                 sum += count.get();
-            if (components.length == 2)
-                // If a combiner went into action, the year was removed from the key, so the split yielded a different
-                // String array.
-                context.write(new Text(components[0] + "$" + components[1]), new LongWritable(sum));
-            else
+//            if (components.length == 2)
+//                // If a combiner went into action, the year was removed from the key, so the split yielded a different
+//                // String array.
+//                context.write(new Text(components[0] + "$" + components[1]), new LongWritable(sum));
+//            else
                 context.write(new Text(components[1] + "$" + components[2]), new LongWritable(sum));
         }
     }

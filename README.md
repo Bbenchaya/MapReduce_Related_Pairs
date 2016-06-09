@@ -18,7 +18,7 @@ Required definitions in `~/.bash_profile`:
     export HADOOP_USERNAME=<your username>
 
 ## Running this
-`cd` into `<project directory>/src` and then run:
+from the project folder run:
 
 `$ ./run.sh`
 
