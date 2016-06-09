@@ -70,7 +70,6 @@ public class Phase1 {
         }
 
         private void writeToContext(Context context, String line, String year, String occurrences) throws IOException, InterruptedException {
-//            System.out.println("length: " + line.split(" ").length);
             if (year.compareTo("1900") < 0)
                 return;
             String[] components = line.split(" ");
@@ -134,7 +133,7 @@ public class Phase1 {
 
         @Override
         public void cleanup(Context context) {
-            System.out.println("Num of pairs: " + numOfWordsInCorpus.getValue());
+            System.out.println("Num of words in corpus: " + numOfWordsInCorpus.getValue());
         }
 
     }
@@ -183,11 +182,6 @@ public class Phase1 {
                 context.write(new Text(components[1] + "$" + components[2]), new LongWritable(sum));
         }
 
-        @Override
-        public void cleanup(Context context) {
-            Counter c = context.getCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
-            System.out.println("Num of pairs for reducer 1: " + c.getValue());
-        }
     }
 
 }
