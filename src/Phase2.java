@@ -14,20 +14,17 @@ public class Phase2 {
     private static final int ASCII_OFFSET = 97;
 
     public static class Mapper2
-            extends Mapper<Object, Text, Text, LongWritable>{
+            extends Mapper<Text, LongWritable, Text, LongWritable>{
 
         @Override
-        public void map(Object key, Text value, Context context
+        public void map(Text key, LongWritable value, Context context
         ) throws IOException, InterruptedException {
-            String[] valueAsStrings = value.toString().split("\t");
-            String actualKey = valueAsStrings[0];
-            LongWritable actualValue = new LongWritable(Long.parseLong(valueAsStrings[1]));
-            String[] components = actualKey.toString().split("[$]");
+            String[] components = key.toString().split("[$]");
             if (!components[1].equals("*")) {
-                context.write(new Text(components[1] + "$" + components[0]), actualValue);
-                context.write(new Text(components[1] + "$*"), actualValue);
+                context.write(new Text(components[1] + "$" + components[0]), value);
+                context.write(new Text(components[1] + "$*"), value);
             }
-            context.write(new Text(actualKey), actualValue);
+            context.write(key, value);
         }
     }
 
@@ -40,7 +37,7 @@ public class Phase2 {
     }
 
     public static class Reducer2
-            extends Reducer<Text, LongWritable,Text, WritableLongPair> {
+            extends Reducer<Text, LongWritable, Text, WritableLongPair> {
 
             private Text currentKey;
             private long sum;
@@ -83,29 +80,29 @@ public class Phase2 {
         }
     }
 
-    public static class Comparator2 extends WritableComparator {
-
-        @Override
-        public int compare(WritableComparable o1, WritableComparable o2) {
-            String[] components1 = o1.toString().split("[$]");
-            String[] components2 = o2.toString().split("[$]");
-            if (components1[1].equals("*") && components2[1].equals("*"))
-                return components1[0].compareTo(components2[0]);
-            if (components1[1].equals("*")) {
-                if (components1[0].equals(components2[0]))
-                    return -1;
-                else
-                    return components1[0].compareTo(components2[0]);
-            }
-            if (components2[1].equals("*")) {
-                if (components1[0].equals(components2[0]))
-                    return 1;
-                else
-                    return components1[0].compareTo(components2[0]);
-            }
-            return components1[0].compareTo(components2[0]);
-        }
-
-    }
+//    public static class Comparator2 extends WritableComparator {
+//
+//        @Override
+//        public int compare(WritableComparable o1, WritableComparable o2) {
+//            String[] components1 = o1.toString().split("[$]");
+//            String[] components2 = o2.toString().split("[$]");
+//            if (components1[1].equals("*") && components2[1].equals("*"))
+//                return components1[0].compareTo(components2[0]);
+//            if (components1[1].equals("*")) {
+//                if (components1[0].equals(components2[0]))
+//                    return -1;
+//                else
+//                    return components1[0].compareTo(components2[0]);
+//            }
+//            if (components2[1].equals("*")) {
+//                if (components1[0].equals(components2[0]))
+//                    return 1;
+//                else
+//                    return components1[0].compareTo(components2[0]);
+//            }
+//            return components1[0].compareTo(components2[0]);
+//        }
+//
+//    }
 
 }

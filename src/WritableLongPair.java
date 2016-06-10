@@ -25,13 +25,26 @@ public class WritableLongPair implements Writable {
 
     @Override
     public void write(DataOutput dataOutput) throws IOException {
-        dataOutput.writeLong(l1);
-        dataOutput.writeLong(l2);
+        dataOutput.writeLong(getL1());
+        dataOutput.writeLong(getL2());
     }
 
     @Override
     public void readFields(DataInput dataInput) throws IOException {
         l1 = dataInput.readLong();
         l2 = dataInput.readLong();
+    }
+
+    @Override
+    public String toString() {
+        return getL1() + " " + getL2();
+    }
+
+    public long getL1() {
+        return l1;
+    }
+
+    public long getL2() {
+        return l2;
     }
 }

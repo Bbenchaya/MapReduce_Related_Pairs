@@ -2,33 +2,71 @@
  * Created by asafchelouche on 6/6/16.
  */
 
-import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
 
 public class Phase3 {
 
+    private static final int ASCII_OFFSET = 97;
+
     public static class Mapper3
-            extends Mapper<Object, Text, Text, IntWritable>{
+            extends Mapper<Text, WritableLongPair, Text, WritableLongPair>{
 
 
         @Override
-        public void map(Object key, Text value, Context context
+        public void map(Text key, WritableLongPair value, Context context
         ) throws IOException, InterruptedException {
-
+            System.out.println("map key:" + key.toString() + " value:" + value.toString());
+            context.write(key, value);
         }
     }
 
-    public static class reducer3
-            extends Reducer<Text,IntWritable,Text,IntWritable> {
+    public static class Partitioner3 extends Partitioner<Text, WritableLongPair> {
 
-        public void reduce(Text key, Iterable<IntWritable> values,
+        @Override
+        public int getPartition(Text key, WritableLongPair value, int i) {
+            return (int)(key.toString().charAt(0)) - ASCII_OFFSET;
+        }
+    }
+
+    public static class Reducer3
+            extends Reducer<Text, WritableLongPair, DoubleWritable, Text> {
+
+            private long numOfWordsInCorpus;
+
+        @Override
+        public void setup(Context context) {
+            numOfWordsInCorpus = Long.parseLong(context.getConfiguration().get("NUM_OF_WORDS_IN_CORPUS"));
+        }
+
+        @Override
+        public void reduce(Text key, Iterable<WritableLongPair> counts,
                            Context context
         ) throws IOException, InterruptedException {
-
+            long pairCount = 0;
+            long firstWordCount = 0;
+            long secondWordCount = 0;
+            WritableLongPair pair1 = null;
+            WritableLongPair pair2 = null;
+            for (WritableLongPair count : counts) {
+                if (pair1 == null)
+                    pair1 = count;
+                else if (pair2 == null)
+                    pair2 = count;
+                else
+                    throw new IOException("Phase 3: Reducer: more then 2 values for key: " + key.toString() + " value: " + count.toString());
+            }
+            pairCount = pair1.getL1();
+            firstWordCount = pair1.getL2();
+            secondWordCount = pair2.getL2();
+            double PMI = Math.log(pairCount) + Math.log(firstWordCount) + Math.log(secondWordCount) + Math.log(numOfWordsInCorpus);
+            context.write(new DoubleWritable(PMI), key);
         }
     }
 
