@@ -9,6 +9,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 public class Manager {
 
@@ -86,6 +87,27 @@ public class Manager {
         result = job3.waitForCompletion(true);
         counter = job3.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
         System.out.println("Num of pairs sent to reducers in phase 3: " + counter.getValue());
+
+        Configuration conf4 = new Configuration();
+        Job job4 = Job.getInstance(conf4, "Phase 4");
+        job4.setJarByClass(Phase3.class);
+        job4.setMapperClass(Phase4.Mapper4.class);
+        job4.setPartitionerClass(Phase4.Partitioner4.class);
+        job4.setReducerClass(Phase4.Reducer4.class);
+        job4.setInputFormatClass(SequenceFileInputFormat.class);
+        job4.setMapOutputKeyClass(DoubleWritable.class);
+        job4.setMapOutputValueClass(Text.class);
+        job4.setOutputFormatClass(TextOutputFormat.class);
+        job4.setOutputKeyClass(Text.class);
+        job4.setOutputValueClass(Text.class);
+//        job4.setGroupingComparatorClass(Phase4.Comparator4.class);
+        job4.setNumReduceTasks(26);
+        FileInputFormat.addInputPath(job4, output3);
+        Path output4 = new Path(args[1] + "4");
+        FileOutputFormat.setOutputPath(job4, output4);
+        result = job4.waitForCompletion(true);
+        counter = job4.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
+        System.out.println("Num of pairs sent to reducers in phase 4: " + counter.getValue());
 
 
 //        System.exit(job1.waitForCompletion(true) ? 0 : 1);

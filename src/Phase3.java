@@ -21,10 +21,10 @@ public class Phase3 {
         @Override
         public void map(Text key, WritableLongPair value, Context context
         ) throws IOException, InterruptedException {
-            System.out.println("map key:" + key.toString() + " value:" + value.toString());
             context.write(key, value);
         }
     }
+
 
     public static class Partitioner3 extends Partitioner<Text, WritableLongPair> {
 
@@ -61,13 +61,25 @@ public class Phase3 {
                 else
                     throw new IOException("Phase 3: Reducer: more then 2 values for key: " + key.toString() + " value: " + count.toString());
             }
-            if (pair2 == null)
-                System.out.println("null: key:" + key);
-            pairCount = pair1.getL1();
-            firstWordCount = pair1.getL2();
-            secondWordCount = pair2.getL2();
-            double PMI = Math.log(pairCount) + Math.log(firstWordCount) + Math.log(secondWordCount) + Math.log(numOfWordsInCorpus);
-            context.write(new DoubleWritable(PMI), key);
+            if (pair2 == null) {
+                /*
+                If both words in the pair are actually the same word, then Mapper1 causes their count as a pair to
+                double, and Mapper2 causes their single word count to triple.
+                 */
+                pairCount = pair1.getL1();
+                firstWordCount = pairCount;
+                pairCount /= 2;
+                double PMI = Math.log(pairCount) + Math.log(2 * firstWordCount) + Math.log(numOfWordsInCorpus);
+                context.write(new DoubleWritable(PMI), key);
+            }
+            else {
+                pairCount = pair1.getL1();
+                firstWordCount = pair1.getL2();
+                secondWordCount = pair2.getL2();
+                double PMI = Math.log(pairCount) + Math.log(firstWordCount) + Math.log(secondWordCount) + Math.log(numOfWordsInCorpus);
+                context.write(new DoubleWritable(PMI), key);
+            }
+
         }
     }
 
