@@ -3,7 +3,6 @@
  */
 
 import org.apache.hadoop.io.DoubleWritable;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Partitioner;
@@ -62,6 +61,8 @@ public class Phase3 {
                 else
                     throw new IOException("Phase 3: Reducer: more then 2 values for key: " + key.toString() + " value: " + count.toString());
             }
+            if (pair2 == null)
+                System.out.println("null: key:" + key);
             pairCount = pair1.getL1();
             firstWordCount = pair1.getL2();
             secondWordCount = pair2.getL2();

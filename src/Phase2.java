@@ -39,13 +39,12 @@ public class Phase2 {
     public static class Reducer2
             extends Reducer<Text, LongWritable, Text, WritableLongPair> {
 
-            private Text currentKey;
+            private String currentKey;
             private long sum;
 
         @Override
         public void setup(Context context) {
-            currentKey = new Text();
-            currentKey.set("");
+            currentKey = "";
             sum = 0l;
         }
 
@@ -72,7 +71,7 @@ public class Phase2 {
                 }
                 else {
                     sum = count.get();
-                    currentKey.set(components[0]);
+                    currentKey = components[0];
                 }
             }
             if (!components[1].equals("*"))
