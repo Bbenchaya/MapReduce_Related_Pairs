@@ -109,7 +109,6 @@ public class Manager {
         counter = job4.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
         System.out.println("Num of pairs sent to reducers in phase 4: " + counter.getValue());
 
-
 //        System.exit(job1.waitForCompletion(true) ? 0 : 1);
 
     }

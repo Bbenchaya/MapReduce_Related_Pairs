@@ -11,8 +11,6 @@ import java.io.IOException;
 
 public class Phase4 {
 
-    private static final int ASCII_OFFSET = 97;
-
     public static class Mapper4
             extends Mapper<DoubleWritable, Text, DoubleWritable, Text>{
 
@@ -50,10 +48,9 @@ public class Phase4 {
 
         @Override
         public int compare(byte[] bytes1, int s1, int l1, byte[] bytes2, int s2, int l2) {
-            System.out.println("raw");
             double d1 = readDouble(bytes1, s1);
-            double d2 = readDouble(bytes2, l2);
-            // invert the comparison outcome in order to sort the output in descending order of PMI
+            double d2 = readDouble(bytes2, s2);
+            // invert the comparison outcome in order to sort the output in descending order by PMI
             return (int) (d2 - d1);
         }
     }

@@ -65,7 +65,7 @@ public class Phase2 {
             String[] components = key.toString().split("[$]");
             for (LongWritable count : counts) {
                 if (currentKey.equals(components[1])) {
-                    if (components[1].equals("*"))
+                    if (components[2].equals("*"))
                         sum += count.get();
                     else
                         sumPair += count.get();
@@ -75,34 +75,9 @@ public class Phase2 {
                     currentKey = components[1];
                 }
             }
-            if (!components[1].equals("*"))
+            if (!components[2].equals("*"))
                 context.write(new Text(components[0] + "$" + textContent(components[1], components[2])), new WritableLongPair(sumPair, sum));
         }
     }
-
-//    public static class Comparator2 extends WritableComparator {
-//
-//        @Override
-//        public int compare(WritableComparable o1, WritableComparable o2) {
-//            String[] components1 = o1.toString().split("[$]");
-//            String[] components2 = o2.toString().split("[$]");
-//            if (components1[1].equals("*") && components2[1].equals("*"))
-//                return components1[0].compareTo(components2[0]);
-//            if (components1[1].equals("*")) {
-//                if (components1[0].equals(components2[0]))
-//                    return -1;
-//                else
-//                    return components1[0].compareTo(components2[0]);
-//            }
-//            if (components2[1].equals("*")) {
-//                if (components1[0].equals(components2[0]))
-//                    return 1;
-//                else
-//                    return components1[0].compareTo(components2[0]);
-//            }
-//            return components1[0].compareTo(components2[0]);
-//        }
-//
-//    }
 
 }

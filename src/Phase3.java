@@ -49,9 +49,7 @@ public class Phase3 {
         public void reduce(Text key, Iterable<WritableLongPair> counts,
                            Context context
         ) throws IOException, InterruptedException {
-            long pairCount = 0;
-            long firstWordCount = 0;
-            long secondWordCount = 0;
+            long pairCount, firstWordCount, secondWordCount;
             WritableLongPair pair1 = null;
             WritableLongPair pair2 = null;
             for (WritableLongPair count : counts) {
