@@ -22,14 +22,14 @@ public class Manager {
         Job job1 = Job.getInstance(conf1, "Phase 1");
         job1.setJarByClass(Phase1.class);
         job1.setMapperClass(Phase1.Mapper1.class);
-        job1.setPartitionerClass(Phase1.Partitioner1.class);
+//        job1.setPartitionerClass(Phase1.Partitioner1.class);
 //        job1.setCombinerClass(Phase1.Combiner1.class);
         job1.setReducerClass(Phase1.Reducer1.class);
         job1.setInputFormatClass(SequenceFileInputFormat.class);
         job1.setOutputFormatClass(SequenceFileOutputFormat.class);
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(LongWritable.class);
-        job1.setNumReduceTasks(12);
+//        job1.setNumReduceTasks(12);
         FileInputFormat.addInputPath(job1, new Path(args[0]));
         Path output1 = new Path(args[1]);
         FileOutputFormat.setOutputPath(job1, output1);
@@ -100,8 +100,8 @@ public class Manager {
         job4.setOutputFormatClass(TextOutputFormat.class);
         job4.setOutputKeyClass(Text.class);
         job4.setOutputValueClass(Text.class);
-//        job4.setGroupingComparatorClass(Phase4.Comparator4.class);
-        job4.setNumReduceTasks(26);
+        job4.setSortComparatorClass(Phase4.Comparator4.class);
+        job4.setNumReduceTasks(12);
         FileInputFormat.addInputPath(job4, output3);
         Path output4 = new Path(args[1] + "4");
         FileOutputFormat.setOutputPath(job4, output4);

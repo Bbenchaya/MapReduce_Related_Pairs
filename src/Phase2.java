@@ -20,9 +20,9 @@ public class Phase2 {
         public void map(Text key, LongWritable value, Context context
         ) throws IOException, InterruptedException {
             String[] components = key.toString().split("[$]");
-            if (!components[1].equals("*")) {
-                context.write(new Text(components[1] + "$" + components[0]), value);
-                context.write(new Text(components[1] + "$*"), value);
+            if (!components[2].equals("*")) {
+                context.write(new Text(components[0] + "$" + components[2] + "$" + components[1]), value);
+                context.write(new Text(components[0] + "$" + components[2] + "$*"), value);
             }
             context.write(key, value);
         }
@@ -31,8 +31,9 @@ public class Phase2 {
     public static class Partitioner2 extends Partitioner<Text, LongWritable> {
 
         @Override
-        public int getPartition(Text text, LongWritable longWritable, int i) {
-            return (int)(text.toString().charAt(0)) - ASCII_OFFSET;
+        public int getPartition(Text key, LongWritable value, int i) {
+            String[] components = key.toString().split("[$]");
+            return (int)(components[1].charAt(0)) - ASCII_OFFSET;
         }
     }
 
@@ -63,7 +64,7 @@ public class Phase2 {
             long sumPair = 0l;
             String[] components = key.toString().split("[$]");
             for (LongWritable count : counts) {
-                if (currentKey.equals(components[0])) {
+                if (currentKey.equals(components[1])) {
                     if (components[1].equals("*"))
                         sum += count.get();
                     else
@@ -71,11 +72,11 @@ public class Phase2 {
                 }
                 else {
                     sum = count.get();
-                    currentKey = components[0];
+                    currentKey = components[1];
                 }
             }
             if (!components[1].equals("*"))
-                context.write(new Text(textContent(components[0], components[1])), new WritableLongPair(sumPair, sum));
+                context.write(new Text(components[0] + "$" + textContent(components[1], components[2])), new WritableLongPair(sumPair, sum));
         }
     }
 

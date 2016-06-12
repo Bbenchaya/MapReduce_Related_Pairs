@@ -150,15 +150,15 @@ public class Phase1 {
 
     }
 
-    public static class Partitioner1 extends Partitioner<Text, LongWritable> {
-
-        @Override
-        public int getPartition(Text text, LongWritable longWritable, int i) {
-            int year = Integer.parseInt(text.toString().split("[$]")[0]);
-            year -= 1900;
-            return year / 10; // 1900-1909 go to reducer 0, 1910-1919 go to reducer 1 and so on...
-        }
-    }
+//    public static class Partitioner1 extends Partitioner<Text, LongWritable> {
+//
+//        @Override
+//        public int getPartition(Text text, LongWritable longWritable, int i) {
+//            int year = Integer.parseInt(text.toString().split("[$]")[0]);
+//            year -= 1900;
+//            return year / 10; // 1900-1909 go to reducer 0, 1910-1919 go to reducer 1 and so on...
+//        }
+//    }
 
     public static class Reducer1
             extends Reducer<Text, LongWritable, Text, LongWritable> {
@@ -179,7 +179,8 @@ public class Phase1 {
 //                // String array.
 //                context.write(new Text(components[0] + "$" + components[1]), new LongWritable(sum));
 //            else
-                context.write(new Text(components[1] + "$" + components[2]), new LongWritable(sum));
+//                context.write(new Text(components[1] + "$" + components[2]), new LongWritable(sum));
+                context.write(key, new LongWritable(sum));
         }
 
     }

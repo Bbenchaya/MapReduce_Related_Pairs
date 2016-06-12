@@ -2,16 +2,12 @@
  * Created by asafchelouche on 6/6/16.
  */
 
-import org.apache.hadoop.io.DoubleWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.WritableComparable;
-import org.apache.hadoop.io.WritableComparator;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-import java.util.Comparator;
 
 public class Phase4 {
 
@@ -32,7 +28,10 @@ public class Phase4 {
 
         @Override
         public int getPartition(DoubleWritable key, Text value, int i) {
-            return (int)(value.toString().charAt(0)) - ASCII_OFFSET;
+            String[] components = value.toString().split("[$]");
+            int year = Integer.parseInt(components[0]);
+            year -= 1900;
+            return year / 10;
         }
     }
 
@@ -50,10 +49,13 @@ public class Phase4 {
     public static class Comparator4 extends WritableComparator {
 
         @Override
-        public int compare(WritableComparable o1, WritableComparable o2) {
-            return -o1.compareTo(o2);
+        public int compare(byte[] bytes1, int s1, int l1, byte[] bytes2, int s2, int l2) {
+            System.out.println("raw");
+            double d1 = readDouble(bytes1, s1);
+            double d2 = readDouble(bytes2, l2);
+            // invert the comparison outcome in order to sort the output in descending order of PMI
+            return (int) (d2 - d1);
         }
-
     }
 
 }

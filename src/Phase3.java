@@ -30,7 +30,8 @@ public class Phase3 {
 
         @Override
         public int getPartition(Text key, WritableLongPair value, int i) {
-            return (int)(key.toString().charAt(0)) - ASCII_OFFSET;
+            String[] components = key.toString().split("[$]");
+            return (int)(components[1].charAt(0)) - ASCII_OFFSET;
         }
     }
 
