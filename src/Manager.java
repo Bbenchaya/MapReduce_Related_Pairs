@@ -15,8 +15,13 @@ public class Manager {
 
     public static void main(String[] args) throws Exception {
         Configuration conf1 = new Configuration();
-        if (args.length != 2) {
-            System.err.println("Usage: Manager <in> <out>");
+        if (args.length != 3) {
+            System.err.println("Usage: Manager <in> <out> <k>");
+            System.exit(1);
+        }
+        int outputSize = Integer.parseInt(args[2]);
+        if (outputSize < 0) {
+            System.err.println("k should be positive");
             System.exit(1);
         }
         Job job1 = Job.getInstance(conf1, "Phase 1");
@@ -89,6 +94,7 @@ public class Manager {
         System.out.println("Num of pairs sent to reducers in phase 3: " + counter.getValue());
 
         Configuration conf4 = new Configuration();
+        conf4.set("OUTPUT_SIZE", args[2]);
         Job job4 = Job.getInstance(conf4, "Phase 4");
         job4.setJarByClass(Phase3.class);
         job4.setMapperClass(Phase4.Mapper4.class);

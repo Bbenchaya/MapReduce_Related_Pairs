@@ -36,11 +36,20 @@ public class Phase4 {
     public static class Reducer4
             extends Reducer<DoubleWritable, Text, Text, Text> {
 
+        private long counter;
+        private long outputSize;
+
+        public void setup(Context context) {
+            counter = 0l;
+            outputSize = Long.parseLong(context.getConfiguration().get("OUTPUT_SIZE"));
+        }
+
         public void reduce(DoubleWritable key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
             for (Text value : values)
-                context.write(value, new Text(key.toString()));
+                if (counter++ < outputSize)
+                    context.write(value, new Text(key.toString()));
         }
     }
 
@@ -51,7 +60,9 @@ public class Phase4 {
             double d1 = readDouble(bytes1, s1);
             double d2 = readDouble(bytes2, s2);
             // invert the comparison outcome in order to sort the output in descending order by PMI
-            return (int) (d2 - d1);
+            if (d1 == d2)
+                return 0;
+            else return (d2 - d1 > 0) ? 1 : -1;
         }
     }
 
