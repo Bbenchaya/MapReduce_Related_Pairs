@@ -2,14 +2,32 @@
  * Created by asafchelouche on 6/6/16.
  */
 
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.Counter;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -35,9 +53,15 @@ public class Phase1 {
             stopwords = new HashMap<>();
 
             // populate the stop-words hashmap
-            File file = new File("stopwords.txt");
-            FileReader fr = new FileReader(file);
-            Scanner sc = new Scanner(fr);
+
+            AmazonS3 s3 = new AmazonS3Client();
+            Region usEast1 = Region.getRegion(Regions.US_EAST_1);
+            s3.setRegion(usEast1);
+
+            System.out.print("Downloading corpus description file from S3... ");
+            S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/resource/", "stopwords.txt"));
+            System.out.println("Done.");
+            Scanner sc = new Scanner(new InputStreamReader(object.getObjectContent()));
             while (sc.hasNextLine()) {
                 String line = sc.nextLine();
                 line = line.replaceAll(REGEX, "");
@@ -55,18 +79,13 @@ public class Phase1 {
         ) throws IOException, InterruptedException {
             String line = value.toString().toLowerCase();
             String[] parts = line.split("\t");
-//            for (String part : parts)
-//                System.out.println(part);
             parts[0] = parts[0].replaceAll(REGEX, "");
             parts[0] = parts[0].replaceAll(" +", " ");
             if (parts[0].equals(" ") || parts[0].isEmpty())
                 return;
             if (parts[0].charAt(0) == ' ')
                 parts[0] = parts[0].substring(1);
-//            System.out.println("after:" + parts[0]);
-            // context, text, year, no. of occurrences
             writeToContext(context, parts[0], parts[1], parts[2]);
-//            System.out.println("\n");
         }
 
         private void writeToContext(Context context, String line, String year, String occurrences) throws IOException, InterruptedException {
@@ -150,16 +169,6 @@ public class Phase1 {
 
     }
 
-//    public static class Partitioner1 extends Partitioner<Text, LongWritable> {
-//
-//        @Override
-//        public int getPartition(Text text, LongWritable longWritable, int i) {
-//            int year = Integer.parseInt(text.toString().split("[$]")[0]);
-//            year -= 1900;
-//            return year / 10; // 1900-1909 go to reducer 0, 1910-1919 go to reducer 1 and so on...
-//        }
-//    }
-
     public static class Reducer1
             extends Reducer<Text, LongWritable, Text, LongWritable> {
 
@@ -168,21 +177,67 @@ public class Phase1 {
                            Context context
         ) throws IOException, InterruptedException {
 
-            String[] components = key.toString().split("[$]");
             long sum = 0l;
-
-            for (LongWritable count : counts) {
+            for (LongWritable count : counts)
                 sum += count.get();
-            }
-//            if (components.length == 2)
-//                // If a combiner went into action, the year was removed from the key, so the split yielded a different
-//                // String array.
-//                context.write(new Text(components[0] + "$" + components[1]), new LongWritable(sum));
-//            else
-//                context.write(new Text(components[1] + "$" + components[2]), new LongWritable(sum));
-                context.write(key, new LongWritable(sum));
+            context.write(key, new LongWritable(sum));
         }
 
+    }
+
+    public static void main(String[] args) throws Exception {
+        if (args.length != 2)
+            throw new IOException("Phase 1: supply 2 arguments");
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Phase 1");
+        job.setJarByClass(Phase1.class);
+        job.setMapperClass(Phase1.Mapper1.class);
+        job.setReducerClass(Phase1.Reducer1.class);
+        job.setInputFormatClass(SequenceFileInputFormat.class);
+        job.setOutputFormatClass(SequenceFileOutputFormat.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(LongWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        Path output = new Path(args[1]);
+        FileOutputFormat.setOutputPath(job, output);
+        boolean result = job.waitForCompletion(true);
+        Counter counter = job.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
+        System.out.println("Num of pairs sent to reducers in phase 1: " + counter.getValue());
+        long numOfWordsInCorpus = job.getCounters().findCounter("Phase1$Mapper1$CountersEnum", "NUM_OF_WORDS_IN_CORPUS").getValue();
+        AmazonS3 s3 = new AmazonS3Client();
+        Region usEast1 = Region.getRegion(Regions.US_EAST_1);
+        s3.setRegion(usEast1);
+        try {
+            System.out.print("Uploading the corpus description file to S3... ");
+            File file = new File("numOfWordsInCorpus.txt");
+            FileWriter fw = new FileWriter(file);
+            fw.write(Long.toString(numOfWordsInCorpus));
+            fw.flush();
+            fw.close();
+            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "numOfWordsInCorpus.txt", file));
+            System.out.println("Done.");
+            System.out.print("Uploading Phase 1 description file to S3... ");
+            file = new File("Phase1Results.txt");
+            fw = new FileWriter(file);
+            fw.write(Long.toString(counter.getValue()));
+            fw.flush();
+            fw.close();
+            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "Phase1Results.txt", file));
+            System.out.println("Done.");
+        } catch (AmazonServiceException ase) {
+            System.out.println("Caught an AmazonServiceException, which means your request made it "
+                    + "to Amazon S3, but was rejected with an error response for some reason.");
+            System.out.println("Error Message:    " + ase.getMessage());
+            System.out.println("HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("Error Type:       " + ase.getErrorType());
+            System.out.println("Request ID:       " + ase.getRequestId());
+        } catch (AmazonClientException ace) {
+            System.out.println("Caught an AmazonClientException, which means the client encountered "
+                    + "a serious internal problem while trying to communicate with S3, "
+                    + "such as not being able to access the network.");
+            System.out.println("Error Message: " + ace.getMessage());
+        }
     }
 
 }

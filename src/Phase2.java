@@ -2,11 +2,25 @@
  * Created by asafchelouche on 6/6/16.
  */
 
-import org.apache.hadoop.io.*;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Partitioner;
-import org.apache.hadoop.mapreduce.Reducer;
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 
 public class Phase2 {
@@ -77,6 +91,55 @@ public class Phase2 {
             }
             if (!components[2].equals("*"))
                 context.write(new Text(components[0] + "$" + textContent(components[1], components[2])), new WritableLongPair(sumPair, sum));
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        if (args.length != 2)
+            throw new IOException("Phase 2: supply 2 arguments");
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Phase 2");
+        job.setJarByClass(Phase2.class);
+        job.setMapperClass(Phase2.Mapper2.class);
+        job.setPartitionerClass(Phase2.Partitioner2.class);
+        job.setReducerClass(Phase2.Reducer2.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(LongWritable.class);
+        job.setInputFormatClass(SequenceFileInputFormat.class);
+        job.setOutputFormatClass(SequenceFileOutputFormat.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(WritableLongPair.class);
+        job.setNumReduceTasks(26);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        boolean result = job.waitForCompletion(true);
+        Counter counter = job.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
+        System.out.println("Num of pairs sent to reducers in phase 2: " + counter.getValue());
+        AmazonS3 s3 = new AmazonS3Client();
+        Region usEast1 = Region.getRegion(Regions.US_EAST_1);
+        s3.setRegion(usEast1);
+        try {
+            System.out.print("Uploading Phase 2 description file to S3... ");
+            File file = new File("Phase2Results.txt");
+            FileWriter fw = new FileWriter(file);
+            fw.write(Long.toString(counter.getValue()));
+            fw.flush();
+            fw.close();
+            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "Phase2Results.txt", file));
+            System.out.println("Done.");
+        } catch (AmazonServiceException ase) {
+            System.out.println("Caught an AmazonServiceException, which means your request made it "
+                    + "to Amazon S3, but was rejected with an error response for some reason.");
+            System.out.println("Error Message:    " + ase.getMessage());
+            System.out.println("HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("Error Type:       " + ase.getErrorType());
+            System.out.println("Request ID:       " + ase.getRequestId());
+        } catch (AmazonClientException ace) {
+            System.out.println("Caught an AmazonClientException, which means the client encountered "
+                    + "a serious internal problem while trying to communicate with S3, "
+                    + "such as not being able to access the network.");
+            System.out.println("Error Message: " + ace.getMessage());
         }
     }
 

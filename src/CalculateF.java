@@ -1,3 +1,10 @@
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
+
 import java.io.*;
 import java.util.*;
 
@@ -6,9 +13,9 @@ import java.util.*;
  */
 public class CalculateF {
 
-    private static final String INPUT_FILE_NEG_LIST = "/Users/asafchelouche/programming/dsp2/src/wordsim-neg.txt";
-    private static final String INPUT_FILE_POS_LIST = "/Users/asafchelouche/programming/dsp2/src/wordsim-pos.txt";
-    private static final String INPUT_FILE_FROM_MAPREDUCE = "/Users/asafchelouche/programming/dsp2/output4/part-r-00010";
+    private static final String INPUT_FILE_NEG_LIST = "/Users/asafchelouche/programming/dsp2/resource/wordsim-neg.txt";
+    private static final String INPUT_FILE_POS_LIST = "/Users/asafchelouche/programming/dsp2/resource/wordsim-pos.txt";
+    private static final String INPUT_FILE_FROM_MAPREDUCE = "part-r-00010";
 
     public static void main(String[] args) throws IOException {
         if (args.length != 1) {
@@ -32,11 +39,17 @@ public class CalculateF {
         sc1.close();
         sc2.close();
 
-        File input = new File(INPUT_FILE_FROM_MAPREDUCE);
-        Scanner sc = new Scanner(input);
+        AmazonS3 s3 = new AmazonS3Client();
+        Region usEast1 = Region.getRegion(Regions.US_EAST_1);
+        s3.setRegion(usEast1);
+
+        System.out.print("Downloading corpus description file from S3... ");
+        S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/output4/", INPUT_FILE_FROM_MAPREDUCE));
+        System.out.println("Done.");
+        Scanner sc = new Scanner(new InputStreamReader(object.getObjectContent()));
         double precision = 0;
         double recall = 0;
-        double fmeasure = 2;
+        double fmeasure;
         double tp = 0;
         double fp = 0;
         double tn = 0;
@@ -63,6 +76,7 @@ public class CalculateF {
                 else fp++;
             }
         }
+        sc.close();
         if (tp + fn == 0l || tp + fp == 0l) {
             System.err.println("Not enough data");
             System.exit(1);
