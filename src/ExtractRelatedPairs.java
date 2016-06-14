@@ -17,6 +17,8 @@ import java.io.FileWriter;
 
 public class ExtractRelatedPairs {
 
+    private static String OUTPUT_SIZE_FILENAME = "outputSize.txt";
+
     public static void main(String[] args) throws Exception {
 
         if (args.length != 1) {
@@ -33,13 +35,13 @@ public class ExtractRelatedPairs {
         Region usEast1 = Region.getRegion(Regions.US_EAST_1);
         s3.setRegion(usEast1);
         try {
-            System.out.print("Uploading Phase 2 description file to S3... ");
-            File file = new File("outputResults.txt");
+            System.out.print("Uploading output size description file to S3... ");
+            File file = new File(OUTPUT_SIZE_FILENAME);
             FileWriter fw = new FileWriter(file);
             fw.write(args[0] + "\n");
             fw.flush();
             fw.close();
-            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/resource/", "outputSize.txt", file));
+            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/resource", OUTPUT_SIZE_FILENAME, file));
             System.out.println("Done.");
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which means your request made it "
