@@ -30,6 +30,8 @@ import java.util.Scanner;
 
 public class Phase4 {
 
+    private static long outputSize;
+
     public static class Mapper4
             extends Mapper<DoubleWritable, Text, DoubleWritable, Text>{
 
@@ -56,11 +58,9 @@ public class Phase4 {
             extends Reducer<DoubleWritable, Text, Text, Text> {
 
         private long counter;
-        private long outputSize;
 
         public void setup(Context context) {
             counter = 0l;
-            outputSize = Long.parseLong(context.getConfiguration().get("OUTPUT_SIZE"));
         }
 
         public void reduce(DoubleWritable key, Iterable<Text> values,
@@ -92,16 +92,16 @@ public class Phase4 {
         Region usEast1 = Region.getRegion(Regions.US_EAST_1);
         s3.setRegion(usEast1);
 
-        System.out.print("Downloading corpus description file from S3... ");
-        S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/results/", "numOfWordsInCorpus.txt"));
+        System.out.print("Downloading output size description file from S3... ");
+        S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/resource/", "outputSize.txt"));
         System.out.println("Done.");
         Scanner sc = new Scanner(new InputStreamReader(object.getObjectContent()));
         String line = sc.nextLine();
         sc.close();
-        System.out.println("Number of words in corpus: " + line);
+        System.out.println("Output size: " + line);
+        outputSize = Long.parseLong(line);
 
         Configuration conf = new Configuration();
-        conf.set("OUTPUT_SIZE", line);
         Job job = Job.getInstance(conf, "Phase 4");
         job.setJarByClass(Phase3.class);
         job.setMapperClass(Mapper4.class);
@@ -126,7 +126,7 @@ public class Phase4 {
             System.out.print("Uploading Phase 4 description file to S3... ");
             File file = new File("Phase4Results.txt");
             FileWriter fw = new FileWriter(file);
-            fw.write(Long.toString(counter.getValue()));
+            fw.write(Long.toString(counter.getValue()) + "\n");
             fw.flush();
             fw.close();
             s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "Phase4Results.txt", file));

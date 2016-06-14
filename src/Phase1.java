@@ -211,7 +211,7 @@ public class Phase1 {
             System.out.print("Uploading the corpus description file to S3... ");
             File file = new File("numOfWordsInCorpus.txt");
             FileWriter fw = new FileWriter(file);
-            fw.write(Long.toString(numOfWordsInCorpus));
+            fw.write(Long.toString(numOfWordsInCorpus) + "\n");
             fw.flush();
             fw.close();
             s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "numOfWordsInCorpus.txt", file));
@@ -219,7 +219,7 @@ public class Phase1 {
             System.out.print("Uploading Phase 1 description file to S3... ");
             file = new File("Phase1Results.txt");
             fw = new FileWriter(file);
-            fw.write(Long.toString(counter.getValue()));
+            fw.write(Long.toString(counter.getValue()) + "\n");
             fw.flush();
             fw.close();
             s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "Phase1Results.txt", file));

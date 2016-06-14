@@ -124,7 +124,7 @@ public class Phase3 {
             System.out.print("Uploading Phase 3 description file to S3... ");
             File file = new File("Phase3Results.txt");
             FileWriter fw = new FileWriter(file);
-            fw.write(Long.toString(counter.getValue()));
+            fw.write(Long.toString(counter.getValue()) + "\n");
             fw.flush();
             fw.close();
             s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "Phase3Results.txt", file));
