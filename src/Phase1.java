@@ -157,18 +157,6 @@ public class Phase1 {
 
     }
 
-    public static class Combiner1 extends Reducer<Text, LongWritable, Text, LongWritable> {
-
-        @Override
-        public void reduce(Text key, Iterable<LongWritable> counts, Context context) throws IOException, InterruptedException {
-            long sum = 0l;
-            for (LongWritable count : counts)
-                sum += count.get();
-            context.write(key, new LongWritable(sum));
-        }
-
-    }
-
     public static class Reducer1
             extends Reducer<Text, LongWritable, Text, LongWritable> {
 

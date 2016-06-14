@@ -1,23 +1,12 @@
 import com.amazonaws.AmazonClientException;
-import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.regions.Region;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.ec2.model.InstanceType;
 import com.amazonaws.services.elasticmapreduce.AmazonElasticMapReduce;
 import com.amazonaws.services.elasticmapreduce.AmazonElasticMapReduceClient;
 import com.amazonaws.services.elasticmapreduce.model.*;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-
-import java.io.File;
-import java.io.FileWriter;
 
 public class ExtractRelatedPairs {
-
-    private static String OUTPUT_SIZE_FILENAME = "outputSize.txt";
 
     public static void main(String[] args) throws Exception {
 
@@ -31,33 +20,6 @@ public class ExtractRelatedPairs {
             System.exit(1);
         }
 
-        AmazonS3 s3 = new AmazonS3Client();
-        Region usEast1 = Region.getRegion(Regions.US_EAST_1);
-        s3.setRegion(usEast1);
-        try {
-            System.out.print("Uploading output size description file to S3... ");
-            File file = new File(OUTPUT_SIZE_FILENAME);
-            FileWriter fw = new FileWriter(file);
-            fw.write(args[0] + "\n");
-            fw.flush();
-            fw.close();
-            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/resource", OUTPUT_SIZE_FILENAME, file));
-            System.out.println("Done.");
-        } catch (AmazonServiceException ase) {
-            System.out.println("Caught an AmazonServiceException, which means your request made it "
-                    + "to Amazon S3, but was rejected with an error response for some reason.");
-            System.out.println("Error Message:    " + ase.getMessage());
-            System.out.println("HTTP Status Code: " + ase.getStatusCode());
-            System.out.println("AWS Error Code:   " + ase.getErrorCode());
-            System.out.println("Error Type:       " + ase.getErrorType());
-            System.out.println("Request ID:       " + ase.getRequestId());
-        } catch (AmazonClientException ace) {
-            System.out.println("Caught an AmazonClientException, which means the client encountered "
-                    + "a serious internal problem while trying to communicate with S3, "
-                    + "such as not being able to access the network.");
-            System.out.println("Error Message: " + ace.getMessage());
-        }
-
         AWSCredentials credentials = null;
         try {
             credentials = new ProfileCredentialsProvider().getCredentials();
@@ -68,7 +30,6 @@ public class ExtractRelatedPairs {
                             "location (~/.aws/credentials), and is in valid format.",
                     e);
         }
-
         AmazonElasticMapReduce mapReduce = new AmazonElasticMapReduceClient(credentials);
 
         HadoopJarStepConfig jarStep1 = new HadoopJarStepConfig()
@@ -94,7 +55,7 @@ public class ExtractRelatedPairs {
         HadoopJarStepConfig jarStep3 = new HadoopJarStepConfig()
                 .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar") // This should be a full map reduce application.
                 .withMainClass("Phase3")
-                .withArgs("s3n://dsps162assignment2benasaf/output2/", "s3n://dsps162assignment2benasaf/output3/");
+                .withArgs("s3n://dsps162assignment2benasaf/output2/", "s3n://dsps162assignment2benasaf/output3/", args[0]);
 
         StepConfig step3Config = new StepConfig()
                 .withName("Phase 3")
@@ -129,6 +90,7 @@ public class ExtractRelatedPairs {
                 .withReleaseLabel("emr-4.7.0")
                 .withLogUri("s3n://dsps162assignment2benasaf/logs/");
 
+        System.out.println("Submitting the JobFlow Request to Amazon EMR and running it.");
         RunJobFlowResult runJobFlowResult = mapReduce.runJobFlow(runFlowRequest);
         String jobFlowId = runJobFlowResult.getJobFlowId();
         System.out.println("Ran job flow with id: " + jobFlowId);

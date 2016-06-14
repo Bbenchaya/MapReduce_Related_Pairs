@@ -8,9 +8,7 @@ import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
@@ -25,8 +23,6 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Scanner;
 
 public class Phase4 {
 
@@ -86,21 +82,12 @@ public class Phase4 {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 2)
+        if (args.length != 3)
             throw new IOException("Phase 4: supply 2 arguments");
         AmazonS3 s3 = new AmazonS3Client();
         Region usEast1 = Region.getRegion(Regions.US_EAST_1);
         s3.setRegion(usEast1);
-
-        System.out.print("Downloading output size description file from S3... ");
-        S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/resource/", "outputSize.txt"));
-        System.out.println("Done.");
-        Scanner sc = new Scanner(new InputStreamReader(object.getObjectContent()));
-        String line = sc.nextLine();
-        sc.close();
-        System.out.println("Output size: " + line);
-        outputSize = Long.parseLong(line);
-
+        outputSize = Long.parseLong(args[2]);
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "Phase 4");
         job.setJarByClass(Phase3.class);
@@ -120,8 +107,6 @@ public class Phase4 {
         boolean result = job.waitForCompletion(true);
         Counter counter = job.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
         System.out.println("Num of pairs sent to reducers in phase 3: " + counter.getValue());
-
-
         try {
             System.out.print("Uploading Phase 4 description file to S3... ");
             File file = new File("Phase4Results.txt");
