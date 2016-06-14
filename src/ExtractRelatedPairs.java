@@ -73,7 +73,7 @@ public class ExtractRelatedPairs {
                 .withActionOnFailure("TERMINATE_JOB_FLOW");
 
         JobFlowInstancesConfig instances = new JobFlowInstancesConfig()
-                .withInstanceCount(20)
+                .withInstanceCount(10)
                 .withMasterInstanceType(InstanceType.M1Small.toString())
                 .withSlaveInstanceType(InstanceType.M1Small.toString())
                 .withHadoopVersion("2.7.2")
