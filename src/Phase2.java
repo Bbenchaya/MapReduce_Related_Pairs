@@ -26,6 +26,7 @@ import java.io.IOException;
 public class Phase2 {
 
     private static final int ASCII_OFFSET = 97;
+    private static final String NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME = "Phase 2 - num of pairs sent to reducers.txt";
 
     public static class Mapper2
             extends Mapper<Text, LongWritable, Text, LongWritable>{
@@ -72,6 +73,7 @@ public class Phase2 {
                 return w2 + "$" + w1;
         }
 
+        @Override
         public void reduce(Text key, Iterable<LongWritable> counts,
                            Context context
         ) throws IOException, InterruptedException {
@@ -100,9 +102,9 @@ public class Phase2 {
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "Phase 2");
         job.setJarByClass(Phase2.class);
-        job.setMapperClass(Phase2.Mapper2.class);
-        job.setPartitionerClass(Phase2.Partitioner2.class);
-        job.setReducerClass(Phase2.Reducer2.class);
+        job.setMapperClass(Mapper2.class);
+        job.setPartitionerClass(Partitioner2.class);
+        job.setReducerClass(Reducer2.class);
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(LongWritable.class);
         job.setInputFormatClass(SequenceFileInputFormat.class);
@@ -110,9 +112,13 @@ public class Phase2 {
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(WritableLongPair.class);
         job.setNumReduceTasks(26);
+        System.out.println("Phase 2 - input path: " + args[0] + ", output path: " + args[1]);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        boolean result = job.waitForCompletion(true);
+        if (job.waitForCompletion(true))
+            System.out.println("Phase 2: job completed successfully");
+        else
+            System.out.println("Phase 2: job completed unsuccessfully");
         Counter counter = job.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
         System.out.println("Num of pairs sent to reducers in phase 2: " + counter.getValue());
         AmazonS3 s3 = new AmazonS3Client();
@@ -120,12 +126,12 @@ public class Phase2 {
         s3.setRegion(usEast1);
         try {
             System.out.print("Uploading Phase 2 description file to S3... ");
-            File file = new File("Phase2Results.txt");
+            File file = new File(NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME);
             FileWriter fw = new FileWriter(file);
             fw.write(Long.toString(counter.getValue()) + "\n");
             fw.flush();
             fw.close();
-            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "Phase2Results.txt", file));
+            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME, file));
             System.out.println("Done.");
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which means your request made it "

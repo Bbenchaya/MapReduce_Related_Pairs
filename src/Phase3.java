@@ -8,7 +8,9 @@ import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
@@ -22,10 +24,13 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Scanner;
 
 public class Phase3 {
 
     private static final int ASCII_OFFSET = 97;
+    private static final String NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME = "Phase 3 - num of pairs sent to reducers.txt";
 
     public static class Mapper3
             extends Mapper<Text, WritableLongPair, Text, WritableLongPair>{
@@ -55,7 +60,15 @@ public class Phase3 {
 
         @Override
         public void setup(Context context) {
-            numOfWordsInCorpus = Long.parseLong(context.getConfiguration().get("NUM_OF_WORDS_IN_CORPUS"));
+            AmazonS3 s3 = new AmazonS3Client();
+            Region usEast1 = Region.getRegion(Regions.US_EAST_1);
+            s3.setRegion(usEast1);
+            S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/results/", "numOfWordsInCorpus.txt"));
+            Scanner scanner = new Scanner(new InputStreamReader(object.getObjectContent()));
+            String line = scanner.nextLine();
+            numOfWordsInCorpus = Long.parseLong(line);
+            scanner.close();
+            System.out.println("Phase 3 - num of words in corpus: " + line);
         }
 
         @Override
@@ -104,30 +117,33 @@ public class Phase3 {
         job.setMapperClass(Mapper3.class);
         job.setPartitionerClass(Partitioner3.class);
         job.setReducerClass(Reducer3.class);
-        job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(WritableLongPair.class);
+        job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
         job.setOutputKeyClass(DoubleWritable.class);
         job.setOutputValueClass(Text.class);
         job.setNumReduceTasks(26);
+        System.out.println("Phase 3 - input path: " + args[0] + ", output path: " + args[1]);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        boolean result = job.waitForCompletion(true);
+        if (job.waitForCompletion(true))
+            System.out.println("Phase 3: job completed successfully");
+        else
+            System.out.println("Phase 3: job completed unsuccessfully");
         Counter counter = job.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
         System.out.println("Num of pairs sent to reducers in phase 3: " + counter.getValue());
-
         AmazonS3 s3 = new AmazonS3Client();
         Region usEast1 = Region.getRegion(Regions.US_EAST_1);
         s3.setRegion(usEast1);
         try {
             System.out.print("Uploading Phase 3 description file to S3... ");
-            File file = new File("Phase3Results.txt");
+            File file = new File(NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME);
             FileWriter fw = new FileWriter(file);
             fw.write(Long.toString(counter.getValue()) + "\n");
             fw.flush();
             fw.close();
-            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "Phase3Results.txt", file));
+            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME, file));
             System.out.println("Done.");
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which means your request made it "

@@ -34,6 +34,8 @@ import java.util.Scanner;
 
 public class Phase1 {
 
+    private static final String NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME = "Phase 1 - num of pairs sent to reducers.txt";
+
     public static class Mapper1
             extends Mapper<Object, Text, Text, LongWritable>{
 
@@ -59,7 +61,7 @@ public class Phase1 {
             s3.setRegion(usEast1);
 
             System.out.print("Downloading corpus description file from S3... ");
-            S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/resource/", "stopwords.txt"));
+            S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/resource", "stopwords.txt"));
             System.out.println("Done.");
             Scanner sc = new Scanner(new InputStreamReader(object.getObjectContent()));
             while (sc.hasNextLine()) {
@@ -72,6 +74,7 @@ public class Phase1 {
             // construct patterns hashset
             conf = context.getConfiguration();
             numOfWordsInCorpus = context.getCounter(CountersEnum.class.getName(), CountersEnum.NUM_OF_WORDS_IN_CORPUS.toString());
+            System.out.println("Phase 1: finished setup");
         }
 
         @Override
@@ -179,16 +182,19 @@ public class Phase1 {
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf, "Phase 1");
         job.setJarByClass(Phase1.class);
-        job.setMapperClass(Phase1.Mapper1.class);
-        job.setReducerClass(Phase1.Reducer1.class);
+        job.setMapperClass(Mapper1.class);
+        job.setReducerClass(Reducer1.class);
         job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setOutputFormatClass(SequenceFileOutputFormat.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(LongWritable.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
-        Path output = new Path(args[1]);
-        FileOutputFormat.setOutputPath(job, output);
-        boolean result = job.waitForCompletion(true);
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.out.println("Phase 1 - input path: " + args[0] + ", output path: " + args[1]);
+        if (job.waitForCompletion(true))
+            System.out.println("Phase 1: job completed successfully");
+        else
+            System.out.println("Phase 1: job completed unsuccessfully");
         Counter counter = job.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
         System.out.println("Num of pairs sent to reducers in phase 1: " + counter.getValue());
         long numOfWordsInCorpus = job.getCounters().findCounter("Phase1$Mapper1$CountersEnum", "NUM_OF_WORDS_IN_CORPUS").getValue();
@@ -197,7 +203,7 @@ public class Phase1 {
         s3.setRegion(usEast1);
         try {
             System.out.print("Uploading the corpus description file to S3... ");
-            File file = new File("numOfWordsInCorpus.txt");
+            File file = new File("Phase 1 - num of pairs sent to reducers.txt");
             FileWriter fw = new FileWriter(file);
             fw.write(Long.toString(numOfWordsInCorpus) + "\n");
             fw.flush();
@@ -205,12 +211,12 @@ public class Phase1 {
             s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "numOfWordsInCorpus.txt", file));
             System.out.println("Done.");
             System.out.print("Uploading Phase 1 description file to S3... ");
-            file = new File("Phase1Results.txt");
+            file = new File(NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME);
             fw = new FileWriter(file);
             fw.write(Long.toString(counter.getValue()) + "\n");
             fw.flush();
             fw.close();
-            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "Phase1Results.txt", file));
+            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME, file));
             System.out.println("Done.");
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which means your request made it "

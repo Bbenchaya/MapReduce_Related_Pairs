@@ -30,12 +30,16 @@ public class ExtractRelatedPairs {
                             "location (~/.aws/credentials), and is in valid format.",
                     e);
         }
+
         AmazonElasticMapReduce mapReduce = new AmazonElasticMapReduceClient(credentials);
 
         HadoopJarStepConfig jarStep1 = new HadoopJarStepConfig()
-                .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar") // This should be a full map reduce application.
+                .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar")
                 .withMainClass("Phase1")
-                .withArgs("s3://datasets.elasticmapreduce/ngrams/books/20090715/eng-gb-all/5gram/data", "s3n://dsps162assignment2benasaf/output1/");
+//                .withArgs("s3://datasets.elasticmapreduce/ngrams/books/20090715/eng-gb-all/5gram/data/", "hdfs:///output1/");
+                .withArgs("s3n://dsps162assignment2benasaf/input/", "hdfs:///output1/");
+
+
 
         StepConfig step1Config = new StepConfig()
                 .withName("Phase 1")
@@ -43,9 +47,9 @@ public class ExtractRelatedPairs {
                 .withActionOnFailure("TERMINATE_JOB_FLOW");
 
         HadoopJarStepConfig jarStep2 = new HadoopJarStepConfig()
-                .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar") // This should be a full map reduce application.
+                .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar")
                 .withMainClass("Phase2")
-                .withArgs("s3n://dsps162assignment2benasaf/output1/", "s3n://dsps162assignment2benasaf/output2/");
+                .withArgs("hdfs:///output1/", "hdfs:///output2/");
 
         StepConfig step2Config = new StepConfig()
                 .withName("Phase 2")
@@ -53,9 +57,9 @@ public class ExtractRelatedPairs {
                 .withActionOnFailure("TERMINATE_JOB_FLOW");
 
         HadoopJarStepConfig jarStep3 = new HadoopJarStepConfig()
-                .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar") // This should be a full map reduce application.
+                .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar")
                 .withMainClass("Phase3")
-                .withArgs("s3n://dsps162assignment2benasaf/output2/", "s3n://dsps162assignment2benasaf/output3/", args[0]);
+                .withArgs("hdfs:///output2/", "hdfs:///output3/");
 
         StepConfig step3Config = new StepConfig()
                 .withName("Phase 3")
@@ -63,9 +67,9 @@ public class ExtractRelatedPairs {
                 .withActionOnFailure("TERMINATE_JOB_FLOW");
 
         HadoopJarStepConfig jarStep4 = new HadoopJarStepConfig()
-                .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar") // This should be a full map reduce application.
+                .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar")
                 .withMainClass("Phase4")
-                .withArgs("s3n://dsps162assignment2benasaf/output3/", "s3n://dsps162assignment2benasaf/output4/");
+                .withArgs("hdfs:///output3/", "s3n://dsps162assignment2benasaf/output/", args[0]);
 
         StepConfig step4Config = new StepConfig()
                 .withName("Phase 4")
@@ -73,9 +77,9 @@ public class ExtractRelatedPairs {
                 .withActionOnFailure("TERMINATE_JOB_FLOW");
 
         JobFlowInstancesConfig instances = new JobFlowInstancesConfig()
-                .withInstanceCount(20)
-                .withMasterInstanceType(InstanceType.M1Small.toString())
-                .withSlaveInstanceType(InstanceType.M1Small.toString())
+                .withInstanceCount(15)
+                .withMasterInstanceType(InstanceType.M1Large.toString())
+                .withSlaveInstanceType(InstanceType.M1Large.toString())
                 .withHadoopVersion("2.7.2")
                 .withEc2KeyName("AWS")
                 .withKeepJobFlowAliveWhenNoSteps(false)
@@ -90,7 +94,7 @@ public class ExtractRelatedPairs {
                 .withReleaseLabel("emr-4.7.0")
                 .withLogUri("s3n://dsps162assignment2benasaf/logs/");
 
-        System.out.println("Submitting the JobFlow Request to Amazon EMR and running it.");
+        System.out.println("Submitting the JobFlow Request to Amazon EMR and running it...");
         RunJobFlowResult runJobFlowResult = mapReduce.runJobFlow(runFlowRequest);
         String jobFlowId = runJobFlowResult.getJobFlowId();
         System.out.println("Ran job flow with id: " + jobFlowId);

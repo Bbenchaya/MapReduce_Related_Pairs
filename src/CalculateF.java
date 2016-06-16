@@ -91,7 +91,9 @@ public class CalculateF {
         HashSet<String> temp;
         while (sc.hasNextLine()) {
             String[] components = sc.nextLine().toLowerCase().split("\t");
-            if ((temp = pairs.putIfAbsent(components[0], new HashSet())) == null) {
+            temp = pairs.get(components[0]);
+            if (temp == null) {
+                pairs.put(components[0], new HashSet<String>());
                 pairs.get(components[0]).add(components[1]);
             } else {
                 temp.add(components[1]);

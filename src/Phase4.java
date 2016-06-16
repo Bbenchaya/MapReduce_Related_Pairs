@@ -20,13 +20,11 @@ import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 
 public class Phase4 {
 
-    private static long outputSize;
+    private static final String NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME = "Phase 4 - num of pairs sent to reducers.txt";
 
     public static class Mapper4
             extends Mapper<DoubleWritable, Text, DoubleWritable, Text>{
@@ -53,18 +51,49 @@ public class Phase4 {
     public static class Reducer4
             extends Reducer<DoubleWritable, Text, Text, Text> {
 
+        private static final String LAST_DECADE_PMI_RESULTS_FILENAME = "lastDecadePMIResults.txt";
         private long counter;
+        private File allPairsInLastDecade;
+        private BufferedWriter br;
+        private AmazonS3 s3;
+        private boolean reducerHandlesLastDecade;
+        private long outputSize;
 
-        public void setup(Context context) {
+        @Override
+        public void setup(Context context) throws IOException {
             counter = 0l;
+            allPairsInLastDecade = new File(LAST_DECADE_PMI_RESULTS_FILENAME);
+            br = new BufferedWriter(new FileWriter(allPairsInLastDecade));
+            s3 = new AmazonS3Client();
+            Region usEast1 = Region.getRegion(Regions.US_EAST_1);
+            s3.setRegion(usEast1);
+            reducerHandlesLastDecade = false;
+            outputSize = Long.parseLong(context.getConfiguration().get("OUTPUT_SIZE"));
         }
 
+        @Override
         public void reduce(DoubleWritable key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
-            for (Text value : values)
+            if (!reducerHandlesLastDecade && Integer.parseInt(values.iterator().next().toString().split("[$]")[0]) >= 2000)
+                reducerHandlesLastDecade = true;
+            for (Text value : values) {
                 if (counter++ < outputSize)
                     context.write(value, new Text(key.toString()));
+                if (reducerHandlesLastDecade)
+                    br.write(value.toString() + "\t" +  key.toString() + "\n");
+            }
+        }
+
+        @Override
+        public void cleanup(Context context) throws IOException {
+            br.flush();
+            br.close();
+            if (reducerHandlesLastDecade) {
+                System.out.print("Uploading the last decade's results file to S3... ");
+                s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", LAST_DECADE_PMI_RESULTS_FILENAME, allPairsInLastDecade));
+                System.out.println("Done.");
+            }
         }
     }
 
@@ -83,38 +112,43 @@ public class Phase4 {
 
     public static void main(String[] args) throws Exception {
         if (args.length != 3)
-            throw new IOException("Phase 4: supply 2 arguments");
-        AmazonS3 s3 = new AmazonS3Client();
-        Region usEast1 = Region.getRegion(Regions.US_EAST_1);
-        s3.setRegion(usEast1);
-        outputSize = Long.parseLong(args[2]);
+            throw new IOException("Phase 4: supply 3 arguments");
+        System.out.println("The output for each decade would contain only the top " + args[2] + " PMI values.");
         Configuration conf = new Configuration();
+        conf.set("OUTPUT_SIZE", args[2]);
         Job job = Job.getInstance(conf, "Phase 4");
-        job.setJarByClass(Phase3.class);
+        job.setJarByClass(Phase4.class);
         job.setMapperClass(Mapper4.class);
         job.setPartitionerClass(Partitioner4.class);
         job.setReducerClass(Reducer4.class);
-        job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setMapOutputKeyClass(DoubleWritable.class);
         job.setMapOutputValueClass(Text.class);
+        job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
         job.setSortComparatorClass(Comparator4.class);
         job.setNumReduceTasks(12);
+        System.out.println("Phase 4 - input path: " + args[0] + ", output path: " + args[1]);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        boolean result = job.waitForCompletion(true);
+        if (job.waitForCompletion(true))
+            System.out.println("Phase 4: job completed successfully");
+        else
+            System.out.println("Phase 4: job completed unsuccessfully");
         Counter counter = job.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
-        System.out.println("Num of pairs sent to reducers in phase 3: " + counter.getValue());
+        System.out.println("Num of pairs sent to reducers in phase 4: " + counter.getValue());
+        AmazonS3 s3 = new AmazonS3Client();
+        Region usEast1 = Region.getRegion(Regions.US_EAST_1);
+        s3.setRegion(usEast1);
         try {
             System.out.print("Uploading Phase 4 description file to S3... ");
-            File file = new File("Phase4Results.txt");
+            File file = new File(NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME);
             FileWriter fw = new FileWriter(file);
             fw.write(Long.toString(counter.getValue()) + "\n");
             fw.flush();
             fw.close();
-            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "Phase4Results.txt", file));
+            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME, file));
             System.out.println("Done.");
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which means your request made it "
