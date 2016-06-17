@@ -9,7 +9,6 @@ import com.amazonaws.services.elasticmapreduce.model.*;
 public class ExtractRelatedPairs {
 
     public static void main(String[] args) throws Exception {
-
         if (args.length != 1) {
             System.err.println("Usage: ExtractRelatedPairs: <k>");
             System.exit(1);
@@ -36,10 +35,8 @@ public class ExtractRelatedPairs {
         HadoopJarStepConfig jarStep1 = new HadoopJarStepConfig()
                 .withJar("s3n://dsps162assignment2benasaf/jars/ExtractRelatedPairs.jar")
                 .withMainClass("Phase1")
-//                .withArgs("s3://datasets.elasticmapreduce/ngrams/books/20090715/eng-gb-all/5gram/data/", "hdfs:///output1/");
-                .withArgs("s3n://dsps162assignment2benasaf/input/", "hdfs:///output1/");
-
-
+                .withArgs("s3://datasets.elasticmapreduce/ngrams/books/20090715/eng-gb-all/5gram/data/", "hdfs:///output1/"); // uncomment this to use the full 26GB corpus
+//                .withArgs("s3n://dsps162assignment2benasaf/input/", "hdfs:///output1/"); // uncomment this in order to use a small (10K entries) corpus
 
         StepConfig step1Config = new StepConfig()
                 .withName("Phase 1")
@@ -98,6 +95,6 @@ public class ExtractRelatedPairs {
         RunJobFlowResult runJobFlowResult = mapReduce.runJobFlow(runFlowRequest);
         String jobFlowId = runJobFlowResult.getJobFlowId();
         System.out.println("Ran job flow with id: " + jobFlowId);
-
     }
+
 }

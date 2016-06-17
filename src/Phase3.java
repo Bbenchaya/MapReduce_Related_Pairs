@@ -56,19 +56,23 @@ public class Phase3 {
     public static class Reducer3
             extends Reducer<Text, WritableLongPair, DoubleWritable, Text> {
 
-            private long numOfWordsInCorpus;
+        private final int NUM_OF_DECADES = 12;
+        private long[] wordsPerYear;
+        public static final String WORDS_PER_DECADE_FILENAME = "wordsPerDecade.txt";
 
         @Override
         public void setup(Context context) {
             AmazonS3 s3 = new AmazonS3Client();
             Region usEast1 = Region.getRegion(Regions.US_EAST_1);
             s3.setRegion(usEast1);
-            S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/results/", "numOfWordsInCorpus.txt"));
+            S3Object object = s3.getObject(new GetObjectRequest("dsps162assignment2benasaf/results/", WORDS_PER_DECADE_FILENAME));
             Scanner scanner = new Scanner(new InputStreamReader(object.getObjectContent()));
-            String line = scanner.nextLine();
-            numOfWordsInCorpus = Long.parseLong(line);
+            wordsPerYear = new long[NUM_OF_DECADES];
+            for (int i = 0; i < NUM_OF_DECADES; i++) {
+                String line = scanner.nextLine();
+                wordsPerYear[i] = Long.parseLong(line);
+            }
             scanner.close();
-            System.out.println("Phase 3 - num of words in corpus: " + line);
         }
 
         @Override
@@ -78,6 +82,7 @@ public class Phase3 {
             long pairCount, firstWordCount, secondWordCount;
             WritableLongPair pair1 = null;
             WritableLongPair pair2 = null;
+            int index = (Integer.parseInt(key.toString().split("[$]")[0]) - 1900) / 10;
             for (WritableLongPair count : counts) {
                 if (pair1 == null)
                     pair1 = count;
@@ -94,14 +99,14 @@ public class Phase3 {
                 pairCount = pair1.getL1();
                 firstWordCount = pairCount;
                 pairCount /= 2;
-                double PMI = Math.log(pairCount) + Math.log(2 * firstWordCount) + Math.log(numOfWordsInCorpus);
+                double PMI = Math.log(pairCount) + Math.log(2 * firstWordCount) + Math.log(wordsPerYear[index]);
                 context.write(new DoubleWritable(PMI), key);
             }
             else {
                 pairCount = pair1.getL1();
                 firstWordCount = pair1.getL2();
                 secondWordCount = pair2.getL2();
-                double PMI = Math.log(pairCount) + Math.log(firstWordCount) + Math.log(secondWordCount) + Math.log(numOfWordsInCorpus);
+                double PMI = Math.log(pairCount) + Math.log(firstWordCount) + Math.log(secondWordCount) + Math.log(wordsPerYear[index]);
                 context.write(new DoubleWritable(PMI), key);
             }
 

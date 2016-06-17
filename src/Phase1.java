@@ -35,17 +35,17 @@ import java.util.Scanner;
 public class Phase1 {
 
     private static final String NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME = "Phase 1 - num of pairs sent to reducers.txt";
+    public static final String WORDS_PER_DECADE_FILENAME = "wordsPerDecade.txt";
+    private static final int NUM_OF_DECADES = 12;
 
     public static class Mapper1
             extends Mapper<Object, Text, Text, LongWritable>{
 
-        static enum CountersEnum {NUM_OF_WORDS_IN_CORPUS}
-        private final static LongWritable one = new LongWritable(1);
+        enum CountersEnum {DECADE_0, DECADE_1, DECADE_2, DECADE_3, DECADE_4, DECADE_5, DECADE_6, DECADE_7, DECADE_8, DECADE_9, DECADE_10, DECADE_11}
         private Text text;
-        private Configuration conf;
         private Map<String, Boolean> stopwords;
         private final String REGEX = "[^a-zA-Z ]+";
-        private Counter numOfWordsInCorpus;
+        private Counter[] counters;
 
         @Override
         public void setup(Context context) throws IOException,
@@ -71,9 +71,19 @@ public class Phase1 {
             }
             sc.close();
 
-            // construct patterns hashset
-            conf = context.getConfiguration();
-            numOfWordsInCorpus = context.getCounter(CountersEnum.class.getName(), CountersEnum.NUM_OF_WORDS_IN_CORPUS.toString());
+            counters = new Counter[NUM_OF_DECADES];
+            counters[0] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_0.toString());
+            counters[1] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_1.toString());
+            counters[2] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_2.toString());
+            counters[3] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_3.toString());            counters[0] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_0.toString());
+            counters[4] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_4.toString());
+            counters[5] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_5.toString());
+            counters[6] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_6.toString());            counters[0] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_0.toString());
+            counters[7] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_7.toString());
+            counters[8] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_8.toString());
+            counters[9] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_9.toString());
+            counters[10] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_10.toString());
+            counters[11] = context.getCounter(CountersEnum.class.getName(), CountersEnum.DECADE_11.toString());
             System.out.println("Phase 1: finished setup");
         }
 
@@ -99,16 +109,17 @@ public class Phase1 {
                 return;
             int middle = 0;
             long numOfOccurences = Long.parseLong(occurrences);
+            int countersIndex = (Integer.parseInt(year) - 1900) / 10;
             switch (components.length) {
                 case 2:
                     if (stopwords.get(components[0]) == null) {
                         text.set(year + "$" + components[0] + "$*");
                         context.write(text, new LongWritable(numOfOccurences)); // write the second word only
-                        numOfWordsInCorpus.increment(numOfOccurences);
+                        counters[countersIndex].increment(numOfOccurences);
                         if (stopwords.get(components[1]) == null) {
                             text.set(year + "$" + components[1] + "$*");
                             context.write(text, new LongWritable(numOfOccurences)); // write the second word only
-                            numOfWordsInCorpus.increment(numOfOccurences);
+                            counters[countersIndex].increment(numOfOccurences);
                             text.set(year + "$" + components[0] + "$" + components[1]);
                             context.write(text, new LongWritable(numOfOccurences)); // write the second word only
                         }
@@ -130,7 +141,7 @@ public class Phase1 {
                     if (middle != index && stopwords.get(component) == null) {
                         text.set(year + "$" + component + "$*");
                         context.write(text, new LongWritable(numOfOccurences)); // write the second word only
-                        numOfWordsInCorpus.increment(1);
+                        counters[countersIndex].increment(1);
                     }
                     index++;
                 }
@@ -141,21 +152,22 @@ public class Phase1 {
             for (String component : components) { // emit pairs
                 if (middle != index && stopwords.get(component) == null) {
                     text.set(year + "$" + major + "$" + component);
-                    context.write(text, one); // write the pair of words
+                    context.write(text, new LongWritable(numOfOccurences)); // write the pair of words
                     text.set(year + "$" + component + "$*");
-                    context.write(text, one); // write the second word only
-                    numOfWordsInCorpus.increment(numOfOccurences);
+                    context.write(text, new LongWritable(numOfOccurences)); // write the second word only
+                    counters[countersIndex].increment(numOfOccurences);
                 }
                 index++;
             }
             text.set(year + "$" + major + "$*");
-            context.write(text, one); // write the middle word
-            numOfWordsInCorpus.increment(numOfOccurences);
+            context.write(text, new LongWritable(numOfOccurences)); // write the middle word
+            counters[countersIndex].increment(numOfOccurences);
         }
 
         @Override
         public void cleanup(Context context) {
-            System.out.println("Num of words in corpus: " + numOfWordsInCorpus.getValue());
+            for (int i = 0; i < NUM_OF_DECADES; i++)
+                System.out.println("Num of words in decade " + i + ": " + counters[i].getValue());
         }
 
     }
@@ -197,18 +209,18 @@ public class Phase1 {
             System.out.println("Phase 1: job completed unsuccessfully");
         Counter counter = job.getCounters().findCounter("org.apache.hadoop.mapreduce.TaskCounter", "REDUCE_INPUT_RECORDS");
         System.out.println("Num of pairs sent to reducers in phase 1: " + counter.getValue());
-        long numOfWordsInCorpus = job.getCounters().findCounter("Phase1$Mapper1$CountersEnum", "NUM_OF_WORDS_IN_CORPUS").getValue();
         AmazonS3 s3 = new AmazonS3Client();
         Region usEast1 = Region.getRegion(Regions.US_EAST_1);
         s3.setRegion(usEast1);
         try {
             System.out.print("Uploading the corpus description file to S3... ");
-            File file = new File("Phase 1 - num of pairs sent to reducers.txt");
+            File file = new File(WORDS_PER_DECADE_FILENAME);
             FileWriter fw = new FileWriter(file);
-            fw.write(Long.toString(numOfWordsInCorpus) + "\n");
+            for (int i = 0; i < NUM_OF_DECADES; i++)
+                fw.write(Long.toString(job.getCounters().findCounter("Phase1$Mapper1$CountersEnum", "DECADE_" + i).getValue()) + "\n");
             fw.flush();
             fw.close();
-            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", "numOfWordsInCorpus.txt", file));
+            s3.putObject(new PutObjectRequest("dsps162assignment2benasaf/results/", WORDS_PER_DECADE_FILENAME, file));
             System.out.println("Done.");
             System.out.print("Uploading Phase 1 description file to S3... ");
             file = new File(NUM_OF_PAIRS_SENT_TO_REDUCERS_FILENAME);
