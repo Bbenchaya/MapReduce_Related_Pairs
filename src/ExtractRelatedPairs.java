@@ -87,8 +87,8 @@ public class ExtractRelatedPairs {
                 .withInstances(instances)
                 .withSteps(step1Config, step2Config, step3Config, step4Config)
                 .withJobFlowRole("EMR_EC2_DefaultRole")
-                .withServiceRole("EMR_DefaultRole")
                 .withReleaseLabel("emr-4.7.0")
+                .withServiceRole("EMR_DefaultRole")
                 .withLogUri("s3n://dsps162assignment2benasaf/logs/");
 
         System.out.println("Submitting the JobFlow Request to Amazon EMR and running it...");
